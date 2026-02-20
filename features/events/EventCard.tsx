@@ -12,6 +12,7 @@ export interface EventData {
     imageUrl: string;
     totalSeats: number;
     availableSeats: number;
+    category?: string;
 }
 
 interface EventCardProps {
@@ -19,7 +20,10 @@ interface EventCardProps {
     className?: string;
 }
 
+import { useRouter } from "next/navigation";
+
 export default function EventCard({ event, className = "" }: EventCardProps) {
+    const router = useRouter();
     const percentAvailable = (event.availableSeats / event.totalSeats) * 100;
 
     // Determine color based on availability
@@ -90,6 +94,7 @@ export default function EventCard({ event, className = "" }: EventCardProps) {
                 <GlassButton
                     className="w-full !py-2.5 text-sm"
                     disabled={event.availableSeats === 0}
+                    onClick={() => router.push(`/events/${event.id}`)}
                 >
                     {event.availableSeats === 0 ? "Waitlist" : "Get Tickets"}
                 </GlassButton>

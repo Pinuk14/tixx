@@ -1,74 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import GlassInput from "@/components/ui/GlassInput";
 import GlassButton from "@/components/ui/GlassButton";
 import EventCard, { EventData } from "@/features/events/EventCard";
-
-// Mock Event Data
-const MOCK_EVENTS: EventData[] = [
-    {
-        id: "evt-1",
-        title: "Neon Nights Tech Mixer",
-        date: "Aug 15, 2026 • 7:00 PM",
-        location: "San Francisco, CA",
-        imageUrl: "", // Deliberately empty to show fallback design
-        totalSeats: 250,
-        availableSeats: 45,
-        category: "Networking",
-    },
-    {
-        id: "evt-2",
-        title: "Global AI Summit 2026",
-        date: "Sep 22, 2026 • 9:00 AM",
-        location: "New York, NY",
-        imageUrl: "",
-        totalSeats: 1500,
-        availableSeats: 0,
-        category: "Conference",
-    },
-    {
-        id: "evt-3",
-        title: "Indie Game Developer Showcase",
-        date: "Oct 05, 2026 • 10:00 AM",
-        location: "Austin, TX",
-        imageUrl: "",
-        totalSeats: 500,
-        availableSeats: 120,
-        category: "Exhibition",
-    },
-    {
-        id: "evt-4",
-        title: "Web3 Creators Meetup",
-        date: "Aug 28, 2026 • 6:30 PM",
-        location: "San Francisco, CA",
-        imageUrl: "",
-        totalSeats: 100,
-        availableSeats: 10,
-        category: "Networking",
-    },
-    {
-        id: "evt-5",
-        title: "Future of Design Symposium",
-        date: "Nov 12, 2026 • 8:00 AM",
-        location: "London, UK",
-        imageUrl: "",
-        totalSeats: 800,
-        availableSeats: 350,
-        category: "Conference",
-    },
-    {
-        id: "evt-6",
-        title: "Underground Electronic Festival",
-        date: "Dec 31, 2026 • 9:00 PM",
-        location: "Berlin, DE",
-        imageUrl: "",
-        totalSeats: 3000,
-        availableSeats: 215,
-        category: "Music",
-    },
-] as (EventData & { category: string })[];
 
 const CATEGORIES = ["All", "Conference", "Networking", "Exhibition", "Music"];
 const LOCATIONS = ["All Locations", "San Francisco, CA", "New York, NY", "Austin, TX", "London, UK", "Berlin, DE"];
@@ -78,9 +14,54 @@ export default function EventsPage() {
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [selectedLocation, setSelectedLocation] = useState("All Locations");
 
-    // Filter Events Logic
+    // Live Database State
+    const [liveEvents, setLiveEvents] = useState<EventData[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Fetch Live Events on Mount
+    useEffect(() => {
+        const fetchEvents = async () => {
+            try {
+                // Post to our custom Next.js endpoint (no auth required for purely searching public events)
+                // Note: We leave the body mostly empty right now to fetch "all" active events.
+                const res = await fetch('/api/events/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ keyword: "" })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+
+                    // Map the Postgres snake_case response to our CamelCase EventCard prop typings
+                    const mappedData = data.events.map((dbEvent: any) => ({
+                        id: dbEvent.id,
+                        title: dbEvent.title,
+                        date: new Date(dbEvent.event_date).toLocaleDateString('en-US', {
+                            month: 'short', day: 'numeric', year: 'numeric'
+                        }),
+                        location: dbEvent.location_name,
+                        imageUrl: "", // Left blank intentionally for glass styling fallback
+                        totalSeats: dbEvent.total_seats || 9999, // Fallback for unlimited
+                        availableSeats: dbEvent.seats_available !== null ? dbEvent.seats_available : 9999,
+                        category: "Conference" // Hardcoded mapping for visual demo purposes as real category isn't in DB yet
+                    }));
+
+                    setLiveEvents(mappedData);
+                }
+            } catch (err) {
+                console.error("Failed to load events from Live Database:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchEvents();
+    }, []);
+
+    // Filter Events Logic - Now uses `liveEvents` instead of MOCK_EVENTS
     const filteredEvents = useMemo(() => {
-        return MOCK_EVENTS.filter((event) => {
+        return liveEvents.filter((event) => {
             const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 event.location.toLowerCase().includes(searchQuery.toLowerCase());
             const matchesCategory = selectedCategory === "All" || event.category === selectedCategory;
@@ -88,7 +69,7 @@ export default function EventsPage() {
 
             return matchesSearch && matchesCategory && matchesLocation;
         });
-    }, [searchQuery, selectedCategory, selectedLocation]);
+    }, [liveEvents, searchQuery, selectedCategory, selectedLocation]);
 
     // Framer Motion Variants
     const containerVariants = {
@@ -193,7 +174,11 @@ export default function EventsPage() {
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
             >
                 <AnimatePresence mode="popLayout">
-                    {filteredEvents.length > 0 ? (
+                    {isLoading ? (
+                        <motion.div className="col-span-1 md:col-span-2 lg:col-span-3 flex justify-center py-24">
+                            <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full" />
+                        </motion.div>
+                    ) : filteredEvents.length > 0 ? (
                         filteredEvents.map(event => (
                             <motion.div
                                 key={event.id}

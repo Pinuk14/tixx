@@ -8,10 +8,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="relative min-h-screen bg-black text-white overflow-hidden">
+      <body className="bg-black text-white">
 
         {/* Liquid Glass Background System */}
-        <div className="fixed inset-0 pointer-events-none">
+        <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
           {/* Dark gradient base */}
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-black to-purple-950 opacity-80"></div>
 
@@ -22,7 +22,7 @@ export default function RootLayout({
         </div>
 
         {/* Content Layer */}
-        <div className="relative z-10 w-full min-h-screen pt-24">
+        <div className="relative z-10 w-full min-h-screen pt-24 overflow-x-hidden">
           <Navbar />
           {children}
         </div>

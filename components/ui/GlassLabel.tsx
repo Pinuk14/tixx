@@ -1,8 +1,8 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, HTMLMotionProps } from "framer-motion";
 
-interface GlassLabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
+interface GlassLabelProps extends HTMLMotionProps<"label"> {
     children: React.ReactNode;
     className?: string;
     required?: boolean;

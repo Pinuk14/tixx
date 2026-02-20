@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import GlassCard from "@/components/ui/GlassCard";
 import GlassInput from "@/components/ui/GlassInput";
@@ -9,6 +10,7 @@ import Link from "next/link";
 import ErrorText from "@/components/ui/ErrorText";
 
 export default function RegisterPage() {
+    const router = useRouter();
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -41,25 +43,62 @@ export default function RegisterPage() {
         }
     }, [password, confirmPassword]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
         setError("");
 
-        // Mock verification
-        setTimeout(() => {
+        // Basic front-end validation
+        if (strength < 2) {
+            setError("Password is too weak. Please choose a stronger password.");
             setIsLoading(false);
+            return;
+        }
 
-            if (strength < 2) {
-                setError("Password is too weak. Please choose a stronger password.");
-            } else if (password !== confirmPassword) {
-                setError("Passwords do not match.");
-            } else if (!email.includes("@")) {
-                setError("Please enter a valid email address.");
+        if (password !== confirmPassword) {
+            setError("Passwords do not match.");
+            setIsLoading(false);
+            return;
+        }
+
+        if (!email.includes("@")) {
+            setError("Please enter a valid email address.");
+            setIsLoading(false);
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name,
+                    email,
+                    password,
+                    role: 'user' // Defaulting to user for this public form
+                })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                // If the backend threw a 400/409/500, it sends { error: string }
+                setError(data.error || 'Registration failed. Please try again.');
             } else {
+                // Success! The API returned { token, user }
+                console.log("Registration Token:", data.token); // Store this in LocalStorage or cookies later
+                localStorage.setItem('tixx_token', data.token);
                 setSuccess(true);
+                // Push UX to gateway exactly 1.5 seconds later
+                setTimeout(() => {
+                    router.push('/dashboard');
+                }, 1500);
             }
-        }, 1500);
+        } catch (err: any) {
+            setError('A network error occurred connecting to the Authentication servers.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const strengthColors = ["bg-red-500", "bg-orange-500", "bg-yellow-400", "bg-green-400", "bg-green-500"];

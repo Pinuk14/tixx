@@ -7,8 +7,10 @@ import GlassInput from "@/components/ui/GlassInput";
 import GlassButton from "@/components/ui/GlassButton";
 import Link from "next/link";
 import ErrorText from "@/components/ui/ErrorText";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+    const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [rememberMe, setRememberMe] = useState(false);
@@ -18,21 +20,47 @@ export default function LoginPage() {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
         setError("");
 
-        // Mock verification
-        setTimeout(() => {
+        // Basic front-end validation
+        if (!email.includes("@") || password.length < 6) {
+            setError("Invalid email or password format.");
             setIsLoading(false);
+            return;
+        }
 
-            if (!email.includes("@") || password.length < 6) {
-                setError("Invalid email or password. Password must be 6+ chars.");
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email,
+                    password
+                })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                setError(data.error || 'Login failed. Please check your credentials.');
             } else {
+                // Success! Store the explicit JWT Token
+                console.log("Login Token:", data.token);
+                localStorage.setItem('tixx_token', data.token);
                 setSuccess(true);
+                // Push UX to gateway exactly 1.5 seconds later
+                setTimeout(() => {
+                    router.push('/dashboard');
+                }, 1500);
             }
-        }, 1500);
+        } catch (err: any) {
+            setError('A network error occurred connecting to the Authentication servers.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
