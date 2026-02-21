@@ -1,0 +1,102 @@
+=========================================================
+          TiXX - LOCAL STARTUP & RUN GUIDE
+=========================================================
+
+Welcome to TiXX! If you are new to the project or want 
+to run it locally on your machine, follow these exact 
+steps from start to finish.
+
+---------------------------------------------------------
+STEP 1: INSTALL PREREQUISITES
+---------------------------------------------------------
+Before downloading anything, ensure your machine has the 
+required software to run a modern Next.js and Postgres stack.
+
+1. Install Node.js
+   - Download and install Node.js (Version 18 or higher is recommended) from https://nodejs.org/
+   - This will automatically install `npm` (Node Package Manager) and `npx`, which you need to download and run Next.js packages.
+   - Verify installation by opening your terminal and running:
+     node -v
+     npm -v
+
+2. Install PostgreSQL (Database)
+   - Download and install PostgreSQL from https://www.postgresql.org/download/
+   - Remember the password you set for the default "postgres" user during installation.
+   - Create an empty database (e.g., named "tixx_db") using pgAdmin or the psql command line.
+
+---------------------------------------------------------
+STEP 2: DOWNLOAD THE PROJECT
+---------------------------------------------------------
+1. Open your terminal or command prompt.
+2. Clone the repository to your local machine:
+   git clone https://github.com/your-username/tixx.git
+   
+   (If you don't have git, you can download the project as a ZIP file from GitHub and extract it).
+
+3. Navigate into the project folder:
+   cd tixx
+
+---------------------------------------------------------
+STEP 3: INSTALL DEPENDENCIES (Next.js & Packages)
+---------------------------------------------------------
+The project relies on Next.js, React, Tailwind CSS, and 
+various libraries.
+
+1. Inside the `tixx` folder, run the following command to 
+   download and install all required packages:
+   
+   npm install
+
+---------------------------------------------------------
+STEP 4: CONFIGURE ENVIRONMENT VARIABLES
+---------------------------------------------------------
+The application needs to securely connect to your local 
+PostgreSQL database and needs a secret key for authentication.
+
+1. In the root of the `tixx` folder, create a new file 
+   named exactly: `.env.local`
+   
+2. Open `.env.local` in a text editor and add the following:
+
+   # Replace 'password' with your postgres password
+   # Replace 'tixx_db' with the database name you created
+   DATABASE_URL="postgres://postgres:password@localhost:5432/tixx_db?sslmode=disable"
+   
+   # A random string used to encrypt user login sessions
+   JWT_SECRET="super-secret-local-development-key-12345"
+
+---------------------------------------------------------
+STEP 5: INITIALIZE THE DATABASE (MIGRATION)
+---------------------------------------------------------
+Now that your app is connected to the database, you need to 
+create the necessary tables (users, events, passes).
+
+1. Run the built-in database migration script:
+   npx ts-node scripts/migrate.ts
+
+   (You should see a success message indicating the tables 
+   were created).
+
+---------------------------------------------------------
+STEP 6: RUN THE NEXT.JS DEVELOPMENT SERVER
+---------------------------------------------------------
+You are ready to launch the app!
+
+1. Start the Next.js local development server by running:
+   npm run dev
+
+2. Wait a few seconds for it to compile.
+3. Open your web browser (Chrome, Edge, Safari) and go to:
+   http://localhost:3000
+
+---------------------------------------------------------
+USAGE TIPS FOR LOCAL DEVELOPMENT
+---------------------------------------------------------
+- To test the Organizer (Host) features, register a new 
+  account, then manually change their role in the `users` 
+  database table from 'user' to 'organizer'.
+- If the server crashes or acts weird due to caching, stop 
+  the server (Ctrl + C), delete the `.next` folder, and 
+  run `npm run dev` again to force a clean build.
+
+Happy coding!
