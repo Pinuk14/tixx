@@ -20,7 +20,14 @@ export async function POST(req: Request) {
             longitude,
             total_seats,
             upi_id,
-            event_date
+            price_per_seat,
+            event_date,
+            end_date,
+            category,
+            currency,
+            image_url,
+            is_dynamic_pricing,
+            dynamic_pricing_strategy
         } = body;
 
         const validationError = validateFields(body, ['title', 'location_name', 'upi_id', 'event_date']);
@@ -28,6 +35,8 @@ export async function POST(req: Request) {
 
         // 4. Validate Event Date is Future
         const parsedEventDate = new Date(event_date);
+        let parsedEndDate: Date | null = null;
+
         if (isNaN(parsedEventDate.getTime())) {
             return NextResponse.json({ error: 'Invalid event_date format.' }, { status: 400 });
         }
@@ -38,6 +47,16 @@ export async function POST(req: Request) {
                 { error: 'Invalid event_date. Events must be scheduled in the future.' },
                 { status: 400 }
             );
+        }
+
+        if (end_date) {
+            parsedEndDate = new Date(end_date);
+            if (isNaN(parsedEndDate.getTime())) {
+                return NextResponse.json({ error: 'Invalid end_date format.' }, { status: 400 });
+            }
+            if (parsedEndDate <= parsedEventDate) {
+                return NextResponse.json({ error: 'End date must be after start date.' }, { status: 400 });
+            }
         }
 
         // 5. Basic UPI Validation (`*@*` pattern)
@@ -107,9 +126,9 @@ export async function POST(req: Request) {
         const insertResult = await query(
             `INSERT INTO events (
         organizer_id, title, description, location_name, latitude, longitude, 
-        total_seats, seats_available, upi_id, event_date, is_active
+        total_seats, seats_available, upi_id, price_per_seat, event_date, end_date, category, currency, image_url, is_active, is_dynamic_pricing, dynamic_pricing_strategy
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true, $16, $17
       ) RETURNING *`,
             [
                 organizerId,
@@ -121,7 +140,14 @@ export async function POST(req: Request) {
                 processedTotalSeats,
                 processedAvailableSeats,
                 upi_id,
-                parsedEventDate.toISOString()
+                price_per_seat || 0,
+                parsedEventDate.toISOString(),
+                parsedEndDate ? parsedEndDate.toISOString() : null,
+                category || 'Conference',
+                currency || 'INR',
+                image_url || null,
+                is_dynamic_pricing || false,
+                dynamic_pricing_strategy || null
             ]
         );
 

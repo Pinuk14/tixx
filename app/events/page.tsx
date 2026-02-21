@@ -6,7 +6,7 @@ import GlassInput from "@/components/ui/GlassInput";
 import GlassButton from "@/components/ui/GlassButton";
 import EventCard, { EventData } from "@/features/events/EventCard";
 
-const CATEGORIES = ["All", "Conference", "Networking", "Exhibition", "Music"];
+const CATEGORIES = ["All", "Conference", "Networking", "Exhibition", "Hackathon", "Showcase", "Music"];
 const LOCATIONS = ["All Locations", "San Francisco, CA", "New York, NY", "Austin, TX", "London, UK", "Berlin, DE"];
 
 export default function EventsPage() {
@@ -22,13 +22,12 @@ export default function EventsPage() {
     useEffect(() => {
         const fetchEvents = async () => {
             try {
-                // Post to our custom Next.js endpoint (no auth required for purely searching public events)
-                // Note: We leave the body mostly empty right now to fetch "all" active events.
-                const res = await fetch('/api/events/search', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ keyword: "" })
-                });
+                // Generate query string
+                const queryParams = new URLSearchParams();
+                if (searchQuery) queryParams.append('keyword', searchQuery);
+
+                // Fetch using GET instead of POST
+                const res = await fetch(`/api/events/search?${queryParams.toString()}`);
 
                 if (res.ok) {
                     const data = await res.json();
@@ -41,10 +40,10 @@ export default function EventsPage() {
                             month: 'short', day: 'numeric', year: 'numeric'
                         }),
                         location: dbEvent.location_name,
-                        imageUrl: "", // Left blank intentionally for glass styling fallback
+                        imageUrl: dbEvent.image_url || "", // Map Postgres snake_case back securely
                         totalSeats: dbEvent.total_seats || 9999, // Fallback for unlimited
                         availableSeats: dbEvent.seats_available !== null ? dbEvent.seats_available : 9999,
-                        category: "Conference" // Hardcoded mapping for visual demo purposes as real category isn't in DB yet
+                        category: dbEvent.category || "Conference"
                     }));
 
                     setLiveEvents(mappedData);

@@ -7,13 +7,15 @@ import GlassButton from "@/components/ui/GlassButton";
 
 interface MockUPIPaymentProps {
     amount: number;
+    currency?: string;
     onSuccess: () => void;
     onCancel: () => void;
 }
 
 type PaymentState = "scanning" | "processing" | "success" | "failed";
 
-export default function MockUPIPayment({ amount, onSuccess, onCancel }: MockUPIPaymentProps) {
+export default function MockUPIPayment({ amount, currency = "INR", onSuccess, onCancel }: MockUPIPaymentProps) {
+    const symbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '₹';
     const [paymentState, setPaymentState] = useState<PaymentState>("scanning");
 
     useEffect(() => {
@@ -49,8 +51,8 @@ export default function MockUPIPayment({ amount, onSuccess, onCancel }: MockUPIP
 
             {/* Background glow effects */}
             <div className={`absolute -top-24 -right-24 w-48 h-48 rounded-full blur-[80px] -z-10 transition-colors duration-1000 ${paymentState === 'success' ? 'bg-green-500/40' :
-                    paymentState === 'failed' ? 'bg-red-500/40' :
-                        'bg-purple-500/30'
+                paymentState === 'failed' ? 'bg-red-500/40' :
+                    'bg-purple-500/30'
                 }`} />
 
             <AnimatePresence mode="wait">
@@ -97,7 +99,7 @@ export default function MockUPIPayment({ amount, onSuccess, onCancel }: MockUPIP
 
                         <div className="flex items-center justify-between w-full p-4 bg-white/5 border border-white/10 rounded-xl mb-6">
                             <span className="text-white/70">Amount Due</span>
-                            <span className="font-bold text-xl">${amount.toFixed(2)}</span>
+                            <span className="font-bold text-xl">{symbol}{amount.toFixed(2)}</span>
                         </div>
 
                         <div className="w-full flex gap-3">

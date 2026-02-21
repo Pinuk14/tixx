@@ -9,6 +9,10 @@ interface SeatGridProps {
     rows?: string[];
     seatsPerRow?: number;
     basePrice?: number;
+    isDynamicPricing?: boolean;
+    dynamicPricingStrategy?: string | null;
+    trueTotalSeats?: number;
+    trueAvailableSeats?: number;
 }
 
 const DEFAULT_ROWS = ["A", "B", "C", "D", "E"];
@@ -19,6 +23,10 @@ export default function SeatGrid({
     rows = DEFAULT_ROWS,
     seatsPerRow = DEFAULT_SEATS_PER_ROW,
     basePrice = DEFAULT_BASE_PRICE,
+    isDynamicPricing = false,
+    dynamicPricingStrategy = null,
+    trueTotalSeats,
+    trueAvailableSeats
 }: SeatGridProps) {
     const {
         seats,
@@ -35,40 +43,27 @@ export default function SeatGrid({
         simulateRandomRelease,
     } = useSeatStore();
 
+    // Calculate optimal grid shape
+    const calculatedSeatsPerRow = trueTotalSeats && trueTotalSeats > 100 ? 15 : seatsPerRow;
+    const calculatedRowCount = trueTotalSeats ? Math.ceil(trueTotalSeats / calculatedSeatsPerRow) : rows.length;
+
+    const dynamicRows = useMemo(() => {
+        if (!trueTotalSeats) return rows; // Fallback to prop or default if no true size provided
+        return Array.from({ length: Math.min(calculatedRowCount, 26) }, (_, i) => String.fromCharCode(65 + i));
+    }, [trueTotalSeats, calculatedRowCount, rows]);
+
     // 1. Initialize Seats on mount or when props change
     useEffect(() => {
-        initializeSeats(rows, seatsPerRow, basePrice);
-    }, [rows, seatsPerRow, basePrice, initializeSeats]);
-
-    // 2. Real-time update simulation (every 5 seconds)
-    useEffect(() => {
-        if (!isSimulating && seats.length > 0) {
-            startSimulation();
-        }
-
-        let intervalId: NodeJS.Timeout;
-
-        if (isSimulating) {
-            intervalId = setInterval(() => {
-                // 70% chance to reserve, 30% chance to release
-                if (Math.random() < 0.7) {
-                    simulateRandomReservation();
-                } else {
-                    simulateRandomRelease();
-                }
-            }, 5000); // 5 sec interval
-        }
-
-        return () => {
-            if (intervalId) clearInterval(intervalId);
-        };
-    }, [
-        isSimulating,
-        seats.length,
-        startSimulation,
-        simulateRandomReservation,
-        simulateRandomRelease,
-    ]);
+        initializeSeats(
+            dynamicRows,
+            calculatedSeatsPerRow,
+            basePrice,
+            isDynamicPricing,
+            dynamicPricingStrategy,
+            trueTotalSeats,
+            trueAvailableSeats
+        );
+    }, [dynamicRows, calculatedSeatsPerRow, basePrice, isDynamicPricing, dynamicPricingStrategy, trueTotalSeats, trueAvailableSeats, initializeSeats]);
 
     // Clean up simulation on unmount
     useEffect(() => {
@@ -77,12 +72,12 @@ export default function SeatGrid({
 
     // Derive dynamic grid layout
     const grid = useMemo(() => {
-        return rows.map((row) => {
+        return dynamicRows.map((row) => {
             return seats
                 .filter((s) => s.row === row)
                 .sort((a, b) => a.number - b.number);
         });
-    }, [seats, rows]);
+    }, [seats, dynamicRows]);
 
     const handleSeatClick = (seatId: string) => {
         if (selectedSeats.includes(seatId)) {
@@ -144,10 +139,10 @@ export default function SeatGrid({
                 {/* Dynamic Seat Grid */}
                 <div className="flex flex-col gap-4 md:gap-6 items-center">
                     {grid.map((rowSeats, rowIndex) => (
-                        <div key={rows[rowIndex]} className="flex gap-2 md:gap-4 items-center">
+                        <div key={dynamicRows[rowIndex]} className="flex gap-2 md:gap-4 items-center">
                             {/* Row Label (Left) */}
                             <div className="w-6 text-center text-white/40 font-bold hidden md:block">
-                                {rows[rowIndex]}
+                                {dynamicRows[rowIndex]}
                             </div>
 
                             {/* Seats */}
@@ -174,7 +169,7 @@ export default function SeatGrid({
 
                             {/* Row Label (Right) */}
                             <div className="w-6 text-center text-white/40 font-bold hidden md:block">
-                                {rows[rowIndex]}
+                                {dynamicRows[rowIndex]}
                             </div>
                         </div>
                     ))}

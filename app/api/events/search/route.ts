@@ -18,7 +18,12 @@ export async function GET(req: Request) {
         id, 
         title, 
         location_name, 
-        seats_available, 
+        seats_available,
+        total_seats,
+        category,
+        image_url,
+        price_per_seat,
+        currency,
         event_date
       FROM events
       WHERE is_active = true

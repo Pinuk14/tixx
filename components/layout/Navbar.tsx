@@ -5,6 +5,7 @@ import Link from "next/link";
 import GlassButton from "@/components/ui/GlassButton";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Logo from "@/components/ui/Logo";
 
 export default function Navbar() {
     const router = useRouter();
@@ -13,6 +14,8 @@ export default function Navbar() {
 
     // Track authentication directly from browser storage
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [userRole, setUserRole] = useState("user");
+    const [userPfp, setUserPfp] = useState("https://api.dicebear.com/7.x/avataaars/svg?seed=Felix");
     const [isMounted, setIsMounted] = useState(false);
 
     // Setup scroll listener for the liquid glass transition
@@ -29,7 +32,26 @@ export default function Navbar() {
         // across layouts (common when traversing App Router)
         const checkAuth = () => {
             const token = localStorage.getItem('tixx_token');
-            setIsLoggedIn(!!token);
+            if (token) {
+                try {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    setIsLoggedIn(true);
+                    if (payload.role) {
+                        setUserRole(payload.role);
+                        if (payload.role === 'organizer') {
+                            setUserPfp("https://api.dicebear.com/7.x/notionists/svg?seed=Host&backgroundColor=b6e3f4"); // Premium look
+                        } else {
+                            // Assign a stable but seemingly random avatar based on their userId
+                            const userSeed = payload.userId || Math.random().toString();
+                            setUserPfp(`https://api.dicebear.com/7.x/avataaars/svg?seed=${userSeed}&backgroundColor=c0aede,d1d4f9`);
+                        }
+                    }
+                } catch (e) {
+                    setIsLoggedIn(false);
+                }
+            } else {
+                setIsLoggedIn(false);
+            }
         };
 
         checkAuth();
@@ -68,14 +90,9 @@ export default function Navbar() {
                     <motion.div
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        className="flex items-center gap-2 cursor-pointer"
+                        className="flex items-center gap-2 cursor-pointer group"
                     >
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold text-xl shadow-[0_0_15px_rgba(168,85,247,0.5)]">
-                            T
-                        </div>
-                        <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">
-                            TiXX
-                        </span>
+                        <Logo className="h-8 text-white group-hover:text-purple-400 transition-colors duration-300 drop-shadow-[0_0_10px_rgba(168,85,247,0.3)]" />
                     </motion.div>
                 </Link>
 
@@ -95,15 +112,29 @@ export default function Navbar() {
                         ) : (
                             // Logged In Status View
                             <>
-                                <GlassButton className="!py-2 !px-5 text-sm !bg-transparent border-transparent text-purple-300 hover:!bg-purple-500/10">
-                                    <Link href="/dashboard">Dashboard</Link>
-                                </GlassButton>
-                                <GlassButton
-                                    onClick={executeLogout}
-                                    className="!py-2 !px-5 text-sm bg-white/5 border-white/10 hover:bg-red-500/20 hover:border-red-500/30 hover:text-red-300 transition-colors"
-                                >
-                                    Log out
-                                </GlassButton>
+                                {userRole === 'user' ? (
+                                    <GlassButton className="!py-2 !px-5 text-sm !bg-transparent border-transparent text-blue-300 hover:!bg-blue-500/10">
+                                        <Link href="/passes">Show Passes</Link>
+                                    </GlassButton>
+                                ) : (
+                                    <GlassButton className="!py-2 !px-5 text-sm !bg-transparent border-transparent text-purple-300 hover:!bg-purple-500/10">
+                                        <Link href="/dashboard">Dashboard</Link>
+                                    </GlassButton>
+                                )}
+                                <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-full pr-4 p-1 backdrop-blur-md">
+                                    <div className="w-8 h-8 rounded-full overflow-hidden bg-white/10 border border-white/20">
+                                        <img src={userPfp} alt="Profile" className="w-full h-full object-cover" />
+                                    </div>
+                                    <span className="text-xs font-medium text-white/70 capitalize hidden lg:block">
+                                        {userRole}
+                                    </span>
+                                    <button
+                                        onClick={executeLogout}
+                                        className="text-xs text-red-400 hover:text-red-300 transition-colors ml-2 font-bold"
+                                    >
+                                        Log out
+                                    </button>
+                                </div>
                             </>
                         )}
                     </div>

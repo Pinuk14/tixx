@@ -30,17 +30,28 @@ export default function EventCheckoutPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
 
+    // Auth States for Deletion Auth
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
     // Fetch live details hook
     useEffect(() => {
         if (!eventId) return;
 
         const fetchEventDetails = async () => {
             try {
+                // Decode token if exists to find out who we are
+                const token = localStorage.getItem('tixx_token');
+                if (token) {
+                    try {
+                        const payload = JSON.parse(atob(token.split('.')[1]));
+                        setCurrentUserId(payload.userId);
+                    } catch (e) { }
+                }
+
                 const res = await fetch(`/api/events/${eventId}`);
                 if (!res.ok) {
-                    if (res.status === 404 || res.status === 400) {
-                        setNotFound(true);
-                    }
+                    setNotFound(true);
                     return;
                 }
                 const data = await res.json();
@@ -56,11 +67,15 @@ export default function EventCheckoutPage() {
                     time: "8:00 PM - 12:00 AM", // Placeholder since DB doesn't have explicit time yet
                     location: dbEvent.location_name,
                     venue: dbEvent.location_name.split(',')[0],
-                    imageUrl: "",
+                    imageUrl: dbEvent.image_url || "",
                     totalSeats: dbEvent.total_seats,
                     availableSeats: dbEvent.seats_available,
                     description: "Join us for an exclusive event. Connect with others, learn, and grow. Powered by TiXX DB.",
-                    pricePerSeat: dbEvent.price_per_seat ? parseFloat(dbEvent.price_per_seat) : 0
+                    pricePerSeat: dbEvent.price_per_seat ? parseFloat(dbEvent.price_per_seat) : 0,
+                    currency: dbEvent.currency || 'INR',
+                    organizerId: dbEvent.organizer_id, // Add this to verify ownership
+                    isDynamicPricing: dbEvent.is_dynamic_pricing,
+                    dynamicPricingStrategy: dbEvent.dynamic_pricing_strategy
                 });
 
             } catch (err) {
@@ -91,14 +106,69 @@ export default function EventCheckoutPage() {
         setStep("payment");
     };
 
-    const handlePaymentSuccess = () => {
+    const handlePaymentSuccess = async () => {
         const generatedOrderId = `TXN-${Math.floor(Math.random() * 10000)}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
         setOrderId(generatedOrderId);
-        setStep("success");
+
+        try {
+            const token = localStorage.getItem('tixx_token');
+            if (!token) {
+                alert("You must be logged in to secure these tickets.");
+                window.location.href = '/login';
+                return;
+            }
+
+            const res = await fetch('/api/passes/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    eventId: event.id,
+                    orderId: generatedOrderId,
+                    seats: selectedSeats
+                })
+            });
+
+            if (res.ok) {
+                setStep("success");
+                // Clear simulation reservations permanently since they're bought
+            } else {
+                console.error("Failed to persist pass to DB");
+                alert("Payment captured but we couldn't generate your pass. Please contact support.");
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Network error processing your pass generation.");
+        }
     };
 
     const handleCancelPayment = () => {
         setStep("seats");
+    };
+
+    const handleDeleteEvent = async () => {
+        if (!confirm("Are you sure you want to delete this event? This action cannot be undone.")) return;
+        setIsDeleting(true);
+        try {
+            const token = localStorage.getItem('tixx_token');
+            const res = await fetch(`/api/events/${eventId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (res.ok) {
+                window.location.href = '/dashboard';
+            } else {
+                alert("Failed to delete event.");
+            }
+        } catch (error) {
+            alert("Network error.");
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     // 404 Guard Clause
@@ -155,14 +225,28 @@ export default function EventCheckoutPage() {
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6 }}
+                        className="flex flex-col md:flex-row md:items-end justify-between gap-6"
                     >
-                        <div className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md border border-white/30 rounded-full text-xs font-semibold uppercase tracking-wider text-white mb-4">
-                            Technology • Networking
+                        <div>
+                            <div className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md border border-white/30 rounded-full text-xs font-semibold uppercase tracking-wider text-white mb-4">
+                                {event.category || "Conference"}
+                            </div>
+                            <h1 className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70 mb-4 max-w-4xl">
+                                {event.title}
+                            </h1>
+                            <p className="text-xl text-white/80">{event.date} • {event.location}</p>
                         </div>
-                        <h1 className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70 mb-4 max-w-4xl">
-                            {event.title}
-                        </h1>
-                        <p className="text-xl text-white/80">{event.date} • {event.location}</p>
+
+                        {/* Organizer Controls */}
+                        {currentUserId === event.organizerId && (
+                            <GlassButton
+                                onClick={handleDeleteEvent}
+                                disabled={isDeleting}
+                                className="!py-3 !px-6 !bg-red-500/20 hover:!bg-red-500/40 border-red-500/50 text-red-200 transition-all"
+                            >
+                                {isDeleting ? "Deleting..." : "Delete Event"}
+                            </GlassButton>
+                        )}
                     </motion.div>
                 </div>
             </div>
@@ -219,14 +303,20 @@ export default function EventCheckoutPage() {
                                 <div>
                                     <h3 className="text-2xl font-bold mb-4 ml-2">Interactive Seating</h3>
                                     {/* 2D Interactive Seat Grid */}
-                                    <SeatGrid />
+                                    <SeatGrid
+                                        basePrice={event.pricePerSeat}
+                                        isDynamicPricing={event.isDynamicPricing}
+                                        dynamicPricingStrategy={event.dynamicPricingStrategy}
+                                        trueTotalSeats={event.totalSeats}
+                                        trueAvailableSeats={event.availableSeats}
+                                    />
                                 </div>
                             </div>
 
                             {/* Right Column - Order Summary */}
                             <div>
                                 <div className="sticky top-28 h-auto">
-                                    <OrderSummary onProceedToPayment={handleProceedToPayment} />
+                                    <OrderSummary onProceedToPayment={handleProceedToPayment} currency={event.currency} />
                                 </div>
                             </div>
                         </motion.div>
@@ -244,6 +334,7 @@ export default function EventCheckoutPage() {
                         >
                             <MockUPIPayment
                                 amount={totalAmountDue}
+                                currency={event.currency}
                                 onSuccess={handlePaymentSuccess}
                                 onCancel={handleCancelPayment}
                             />

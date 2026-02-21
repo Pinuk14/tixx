@@ -15,6 +15,7 @@ export default function RegisterPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [role, setRole] = useState<'user' | 'organizer'>('user');
 
     const [strength, setStrength] = useState(0); // 0-4
     const [passwordsMatch, setPasswordsMatch] = useState<boolean | null>(null);
@@ -75,7 +76,7 @@ export default function RegisterPage() {
                     name,
                     email,
                     password,
-                    role: 'user' // Defaulting to user for this public form
+                    role
                 })
             });
 
@@ -142,6 +143,29 @@ export default function RegisterPage() {
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
                                 />
+
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-medium text-white/80 ml-1">Account Type</label>
+                                    <div className="flex gap-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => setRole('user')}
+                                            className={`flex-1 py-3 px-4 rounded-xl border transition-all duration-300 ${role === 'user' ? 'bg-purple-500/30 border-purple-500/50 text-white' : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'}`}
+                                        >
+                                            General User
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setRole('organizer')}
+                                            className={`flex-1 py-3 px-4 rounded-xl border transition-all duration-300 ${role === 'organizer' ? 'bg-blue-500/30 border-blue-500/50 text-white' : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'}`}
+                                        >
+                                            Organizer
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-white/50 ml-1 mt-1">
+                                        {role === 'organizer' ? 'Organizers can create and manage live events.' : 'Users can browse and book tickets for events.'}
+                                    </p>
+                                </div>
 
                                 <div className="space-y-2">
                                     <GlassInput

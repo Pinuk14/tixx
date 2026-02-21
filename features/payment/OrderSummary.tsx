@@ -9,9 +9,11 @@ import GlassButton from "@/components/ui/GlassButton";
 interface OrderSummaryProps {
     onProceedToPayment: () => void;
     className?: string;
+    currency?: string;
 }
 
-export default function OrderSummary({ onProceedToPayment, className = "" }: OrderSummaryProps) {
+export default function OrderSummary({ onProceedToPayment, className = "", currency = "INR" }: OrderSummaryProps) {
+    const symbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '₹';
     const { seats, selectedSeats } = useSeatStore();
 
     const selectedSeatDetails = useMemo(() => {
@@ -22,20 +24,7 @@ export default function OrderSummary({ onProceedToPayment, className = "" }: Ord
         return selectedSeatDetails.reduce((sum, seat) => sum + seat.price, 0);
     }, [selectedSeatDetails]);
 
-    // Framer motion variants
-    const listVariants = {
-        hidden: { opacity: 0 },
-        show: {
-            opacity: 1,
-            transition: { staggerChildren: 0.1 }
-        }
-    };
 
-    const itemVariants = {
-        hidden: { opacity: 0, x: -20 },
-        show: { opacity: 1, x: 0 },
-        exit: { opacity: 0, x: 20, transition: { duration: 0.2 } }
-    };
 
     if (selectedSeats.length === 0) {
         return (
@@ -61,17 +50,14 @@ export default function OrderSummary({ onProceedToPayment, className = "" }: Ord
             </h3>
 
             <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent mb-6 max-h-[300px]">
-                <motion.ul
-                    variants={listVariants}
-                    initial="hidden"
-                    animate="show"
-                    className="space-y-3"
-                >
-                    <AnimatePresence>
+                <ul className="space-y-3">
+                    <AnimatePresence mode="popLayout">
                         {selectedSeatDetails.map((seat) => (
                             <motion.li
                                 key={seat.id}
-                                variants={itemVariants}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: 20, transition: { duration: 0.2 } }}
                                 layout
                                 className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10"
                             >
@@ -84,21 +70,21 @@ export default function OrderSummary({ onProceedToPayment, className = "" }: Ord
                                         <p className="text-xs text-white/50">Seat {seat.number}</p>
                                     </div>
                                 </div>
-                                <div className="font-semibold">${seat.price}</div>
+                                <div className="font-semibold">{symbol}{seat.price}</div>
                             </motion.li>
                         ))}
                     </AnimatePresence>
-                </motion.ul>
+                </ul>
             </div>
 
             <div className="pt-6 border-t border-white/10 mt-auto">
                 <div className="flex items-center justify-between mb-2">
                     <span className="text-white/60">Subtotal ({selectedSeats.length} seats)</span>
-                    <span className="font-medium">${totalPrice}</span>
+                    <span className="font-medium">{symbol}{totalPrice}</span>
                 </div>
                 <div className="flex items-center justify-between mb-4 text-sm">
                     <span className="text-white/60">Processing Fee</span>
-                    <span className="font-medium">${(selectedSeats.length * 2.50).toFixed(2)}</span>
+                    <span className="font-medium">{symbol}{(selectedSeats.length * 2.50).toFixed(2)}</span>
                 </div>
 
                 <div className="flex items-center justify-between mb-8 p-4 bg-black/20 rounded-2xl border border-white/5">
@@ -110,7 +96,7 @@ export default function OrderSummary({ onProceedToPayment, className = "" }: Ord
                         animate={{ y: 0, opacity: 1 }}
                         className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400"
                     >
-                        ${(totalPrice + (selectedSeats.length * 2.50)).toFixed(2)}
+                        {symbol}{(totalPrice + (selectedSeats.length * 2.50)).toFixed(2)}
                     </motion.div>
                 </div>
 

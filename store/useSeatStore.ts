@@ -17,7 +17,7 @@ interface SeatStore {
     isSimulating: boolean;
 
     // Actions
-    initializeSeats: (rows: string[], seatsPerRow: number, basePrice: number) => void;
+    initializeSeats: (rows: string[], seatsPerRow: number, basePrice: number, isDynamicPricing?: boolean, strategy?: string | null, trueTotalSeats?: number, trueAvailableSeats?: number) => void;
     selectSeat: (seatId: string) => void;
     deselectSeat: (seatId: string) => void;
     clearSelection: () => void;
@@ -37,19 +37,57 @@ export const useSeatStore = create<SeatStore>((set, get) => ({
     availableCount: 0,
     isSimulating: false,
 
-    initializeSeats: (rows, seatsPerRow, basePrice) => {
+    initializeSeats: (rows, seatsPerRow, basePrice, isDynamicPricing, strategy, trueTotalSeats, trueAvailableSeats) => {
         const newSeats: Seat[] = [];
 
+        // Determine how many seats are already sold in the real database
+        let exactSeatsSold = 0;
+        if (trueTotalSeats !== undefined && trueAvailableSeats !== undefined) {
+            exactSeatsSold = trueTotalSeats - trueAvailableSeats;
+        } else {
+            // Fallback for visual display if no data
+            exactSeatsSold = 0;
+        }
+
+        let currentSeatIndex = 0;
+
         // Generate a grid of seats
+        let generatedSeatsCount = 0;
+        const targetTotalSeats = trueTotalSeats || (rows.length * seatsPerRow);
+
         rows.forEach((row, rowIndex) => {
-            // Increase price for rows closer to the stage (earlier in the array)
-            const rowMultiplier = 1 + ((rows.length - rowIndex) * 0.1);
-            const rowPrice = Math.round(basePrice * rowMultiplier);
+            let rowPrice = basePrice;
+
+            if (isDynamicPricing && strategy) {
+                if (strategy === "front_rows_extra") {
+                    // Front rows cost more
+                    const rowMultiplier = 1 + ((rows.length - rowIndex) * 0.15);
+                    rowPrice = Math.round(basePrice * rowMultiplier);
+                } else if (strategy === "back_rows_extra") {
+                    // Back rows cost more
+                    const rowMultiplier = 1 + (rowIndex * 0.15);
+                    rowPrice = Math.round(basePrice * rowMultiplier);
+                } else if (strategy === "center_rows_extra") {
+                    // Center rows cost more
+                    const middleIndex = Math.floor(rows.length / 2);
+                    const distanceToCenter = Math.abs(rowIndex - middleIndex);
+                    const rowMultiplier = 1 + ((rows.length - distanceToCenter) * 0.1);
+                    rowPrice = Math.round(basePrice * rowMultiplier);
+                }
+            } else {
+                // Keep base price flat if dynamic pricing is disabled
+                rowPrice = basePrice;
+            }
 
             for (let i = 1; i <= seatsPerRow; i++) {
+                if (generatedSeatsCount >= targetTotalSeats) {
+                    continue; // Skip generating seats beyond true capacity
+                }
+
                 const id = `${row}${i}`;
-                // Randomly pre-reserve some seats (approx 30%)
-                const isPreReserved = Math.random() < 0.3;
+
+                // Reserve exactly the amount sold, filling from the front rows first (simulating early buyers)
+                const isPreReserved = currentSeatIndex < exactSeatsSold;
 
                 newSeats.push({
                     id,
@@ -58,6 +96,9 @@ export const useSeatStore = create<SeatStore>((set, get) => ({
                     status: isPreReserved ? "reserved" : "available",
                     price: rowPrice,
                 });
+
+                currentSeatIndex++;
+                generatedSeatsCount++;
             }
         });
 
