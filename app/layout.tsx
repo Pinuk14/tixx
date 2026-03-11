@@ -1,5 +1,6 @@
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
+import ChatWidget from "@/components/WebpageChatbot";
 
 export default function RootLayout({
   children,
@@ -26,7 +27,7 @@ export default function RootLayout({
           <Navbar />
           {children}
         </div>
-
+        <ChatWidget />
       </body>
     </html>
   );
