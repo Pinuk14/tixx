@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-type CheckoutStep = "seats" | "payment" | "success";
+type CheckoutStep = "seats" | "attendee_details" | "payment" | "success";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import GlassCard from "@/components/ui/GlassCard";
@@ -24,6 +24,7 @@ export default function EventCheckoutPage() {
 
     const [step, setStep] = useState<CheckoutStep>("seats");
     const [orderId, setOrderId] = useState<string>("");
+    const [attendees, setAttendees] = useState<Record<string, any>[]>([]);
 
     // Live Database States
     const [event, setEvent] = useState<any>(null);
@@ -64,19 +65,40 @@ export default function EventCheckoutPage() {
                     date: new Date(dbEvent.event_date).toLocaleDateString('en-US', {
                         month: 'short', day: 'numeric', year: 'numeric'
                     }),
-                    time: "8:00 PM - 12:00 AM", // Placeholder since DB doesn't have explicit time yet
+                    time: new Date(dbEvent.event_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
                     location: dbEvent.location_name,
                     venue: dbEvent.location_name.split(',')[0],
                     imageUrl: dbEvent.image_url || "",
                     totalSeats: dbEvent.total_seats,
                     availableSeats: dbEvent.seats_available,
-                    description: "Join us for an exclusive event. Connect with others, learn, and grow. Powered by TiXX DB.",
+                    description: dbEvent.description || "Join us for an exclusive event. Connect with others, learn, and grow. Powered by TiXX.",
                     pricePerSeat: dbEvent.price_per_seat ? parseFloat(dbEvent.price_per_seat) : 0,
                     currency: dbEvent.currency || 'INR',
-                    organizerId: dbEvent.organizer_id, // Add this to verify ownership
+                    organizerId: dbEvent.organizer_id,
                     isDynamicPricing: dbEvent.is_dynamic_pricing,
-                    dynamicPricingStrategy: dbEvent.dynamic_pricing_strategy
+                    dynamicPricingStrategy: dbEvent.dynamic_pricing_strategy,
+                    formFields: dbEvent.form_fields || ['name', 'email'],
+                    // New seating system
+                    seatingType: dbEvent.seating_type || 'matrix',
+                    ticketTiers: dbEvent.ticket_tiers || null,
+                    seatingConfig: dbEvent.seating_config || null,
+                    upiId: dbEvent.upi_id,
+                    category: dbEvent.category,
                 });
+
+                // Log view metric
+                let viewerId = sessionStorage.getItem('tixx_viewer_id');
+                if (!viewerId) {
+                    viewerId = `v_${Math.random().toString(36).substring(2, 11)}`;
+                    sessionStorage.setItem('tixx_viewer_id', viewerId);
+                    
+                    // Only log if it's a new unique viewer session to prevent refresh inflation
+                    fetch(`/api/events/${eventId}/view`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ viewerId })
+                    }).catch(err => console.error("Failed to log view", err));
+                }
 
             } catch (err) {
                 console.error("Failed to load event details:", err);
@@ -103,7 +125,44 @@ export default function EventCheckoutPage() {
     // Handlers
     const handleProceedToPayment = () => {
         if (selectedSeats.length === 0) return;
+        
+        // For General Admission, the seat IDs are tier-keyed like "tier_1__1"
+        // We need to resolve each selection to its tier name and price
+        const initialAttendeeShape: Record<string, string> = { seat: "" };
+        event.formFields.forEach((field: string) => {
+            initialAttendeeShape[field] = "";
+        });
+
+        const resolvedAttendees = selectedSeats.map(seatId => {
+            // Try to resolve tier name from the id pattern "tierId__qty"
+            let seatLabel = seatId;
+            if (event.seatingType === "general" && event.ticketTiers) {
+                const [tierId] = seatId.split("__");
+                const tier = event.ticketTiers.find((t: any) => t.id === tierId);
+                if (tier) seatLabel = `${tier.name} (${event.currency === 'USD' ? '$' : event.currency === 'EUR' ? '€' : '₹'}${tier.price})`;
+            }
+            return { ...initialAttendeeShape, seat: seatLabel };
+        });
+
+        setAttendees(resolvedAttendees);
+        setStep("attendee_details");
+    };
+
+    const handleProceedFromAttendees = (e: React.FormEvent) => {
+        e.preventDefault();
+        // Dynamic basic validation
+        const isValid = attendees.every(a => event.formFields.every((f: string) => !!a[f]));
+        if (!isValid) {
+            alert("Please fill out all required attendee details.");
+            return;
+        }
         setStep("payment");
+    };
+
+    const handleAttendeeChange = (index: number, field: string, value: string) => {
+        const newAttendees = [...attendees];
+        newAttendees[index][field] = value;
+        setAttendees(newAttendees);
     };
 
     const handlePaymentSuccess = async () => {
@@ -127,7 +186,7 @@ export default function EventCheckoutPage() {
                 body: JSON.stringify({
                     eventId: event.id,
                     orderId: generatedOrderId,
-                    seats: selectedSeats
+                    seats: attendees // send attendees object array
                 })
             });
 
@@ -145,30 +204,7 @@ export default function EventCheckoutPage() {
     };
 
     const handleCancelPayment = () => {
-        setStep("seats");
-    };
-
-    const handleDeleteEvent = async () => {
-        if (!confirm("Are you sure you want to delete this event? This action cannot be undone.")) return;
-        setIsDeleting(true);
-        try {
-            const token = localStorage.getItem('tixx_token');
-            const res = await fetch(`/api/events/${eventId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            if (res.ok) {
-                window.location.href = '/dashboard';
-            } else {
-                alert("Failed to delete event.");
-            }
-        } catch (error) {
-            alert("Network error.");
-        } finally {
-            setIsDeleting(false);
-        }
+        setStep("attendee_details");
     };
 
     // 404 Guard Clause
@@ -236,17 +272,6 @@ export default function EventCheckoutPage() {
                             </h1>
                             <p className="text-xl text-white/80">{event.date} • {event.location}</p>
                         </div>
-
-                        {/* Organizer Controls */}
-                        {currentUserId === event.organizerId && (
-                            <GlassButton
-                                onClick={handleDeleteEvent}
-                                disabled={isDeleting}
-                                className="!py-3 !px-6 !bg-red-500/20 hover:!bg-red-500/40 border-red-500/50 text-red-200 transition-all"
-                            >
-                                {isDeleting ? "Deleting..." : "Delete Event"}
-                            </GlassButton>
-                        )}
                     </motion.div>
                 </div>
             </div>
@@ -301,14 +326,19 @@ export default function EventCheckoutPage() {
                                 </GlassCard>
 
                                 <div>
-                                    <h3 className="text-2xl font-bold mb-4 ml-2">Interactive Seating</h3>
-                                    {/* 2D Interactive Seat Grid */}
+                                    <h3 className="text-2xl font-bold mb-4 ml-2">
+                                        {event.seatingType === 'general' ? 'Select Tickets' : 'Interactive Seating'}
+                                    </h3>
                                     <SeatGrid
                                         basePrice={event.pricePerSeat}
                                         isDynamicPricing={event.isDynamicPricing}
                                         dynamicPricingStrategy={event.dynamicPricingStrategy}
                                         trueTotalSeats={event.totalSeats}
                                         trueAvailableSeats={event.availableSeats}
+                                        seatingType={event.seatingType}
+                                        ticketTiers={event.ticketTiers}
+                                        seatingConfig={event.seatingConfig}
+                                        currency={event.currency}
                                     />
                                 </div>
                             </div>
@@ -319,6 +349,55 @@ export default function EventCheckoutPage() {
                                     <OrderSummary onProceedToPayment={handleProceedToPayment} currency={event.currency} />
                                 </div>
                             </div>
+                        </motion.div>
+                    )}
+
+                    {/* STEP 1.5: ATTENDEE DETAILS */}
+                    {step === "attendee_details" && (
+                        <motion.div
+                            key="attendee-step"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            transition={{ duration: 0.4 }}
+                            className="max-w-3xl mx-auto"
+                        >
+                            <GlassCard className="!p-8">
+                                <h2 className="text-2xl font-bold mb-2">Attendee Details</h2>
+                                <p className="text-white/60 mb-6 font-medium">Please provide details for each ticket.</p>
+                                
+                                <form onSubmit={handleProceedFromAttendees} className="space-y-6">
+                                    {attendees.map((attendee, idx) => (
+                                        <div key={attendee.seat} className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-4">
+                                            <h4 className="font-semibold text-purple-300">Seat: {attendee.seat}</h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {event.formFields.map((field: string) => (
+                                                    <div key={field} className="space-y-1">
+                                                        <label className="text-xs text-white/50 uppercase tracking-wider">{field}</label>
+                                                        <input 
+                                                            type={field === 'email' ? 'email' : field === 'age' || field === 'phone' ? 'number' : 'text'} 
+                                                            required 
+                                                            value={attendee[field] || ''}
+                                                            onChange={(e) => handleAttendeeChange(idx, field, e.target.value)}
+                                                            className="w-full bg-black/30 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500 transition-colors"
+                                                            placeholder={`Enter ${field}`}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    
+                                    <div className="flex gap-4 pt-4">
+                                        <GlassButton type="button" onClick={() => setStep("seats")} className="flex-1 !bg-white/5 hover:!bg-white/10 border-white/10 !py-3">
+                                            Back to Seats
+                                        </GlassButton>
+                                        <GlassButton type="submit" className="flex-[2] !bg-purple-600/50 hover:!bg-purple-600/70 border-purple-500/50 !py-3">
+                                            Continue to Payment
+                                        </GlassButton>
+                                    </div>
+                                </form>
+                            </GlassCard>
                         </motion.div>
                     )}
 
@@ -360,7 +439,7 @@ export default function EventCheckoutPage() {
                                 date={event.date}
                                 time={event.time}
                                 location={event.venue}
-                                seats={selectedSeats}
+                                attendees={attendees}
                                 orderId={orderId}
                             />
 

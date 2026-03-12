@@ -14,7 +14,7 @@ interface QRPassProps {
     date?: string;
     time?: string;
     location?: string;
-    seats?: string[];
+    attendees?: Record<string, string>[];
     orderId?: string;
 }
 
@@ -23,7 +23,7 @@ export default function QRPass({
     date = "Oct 24, 2024",
     time = "9PM - 4AM",
     location = "The Warehouse, NY",
-    seats = ["A1", "A2"],
+    attendees = [{ seat: "A1", name: "John Doe", email: "john@test.com" }],
     orderId = "TXN-8945-812C",
 }: QRPassProps) {
     const passRef = useRef<HTMLDivElement>(null);
@@ -46,16 +46,16 @@ export default function QRPass({
             img.src = dataUrl;
             await new Promise((resolve) => { img.onload = resolve; });
 
-            // Calculate dimensions to fit A4 neatly (optional, but good for tickets)
+            // Calculate dimensions to fit neatly based on actual DOM height
+            // Calculate ratio
+            const pdfWidth = 210;
+            const pdfHeight = (img.naturalHeight * pdfWidth) / img.naturalWidth;
+
             const pdf = new jsPDF({
                 orientation: "portrait",
                 unit: "mm",
-                format: "a4"
+                format: [pdfWidth, pdfHeight + 40] // Custom height based on content + some padding
             });
-
-            // A4 dimensions are 210x297mm
-            const pdfWidth = 210;
-            const pdfHeight = (img.naturalHeight * pdfWidth) / img.naturalWidth;
 
             // Add image horizontally centered, slightly down
             pdf.addImage(dataUrl, 'PNG', 0, 20, pdfWidth, pdfHeight);
@@ -70,8 +70,32 @@ export default function QRPass({
     };
 
     const handleAddToCalendar = () => {
-        // Mock add to calendar action
-        alert("Adding event to your calendar...");
+        const parsedDate = new Date(date);
+        const formattedDate = !isNaN(parsedDate.getTime())
+            ? parsedDate.toISOString().replace(/-|:|\.\d+/g, '').substring(0, 15)
+            : new Date().toISOString().replace(/-|:|\.\d+/g, '').substring(0, 15);
+
+        const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//TiXX//Pass//EN
+BEGIN:VEVENT
+UID:${orderId}@tixx.com
+DTSTAMP:${formattedDate}Z
+DTSTART:${formattedDate}Z
+SUMMARY:${eventTitle}
+LOCATION:${location}
+DESCRIPTION:Your pass for ${eventTitle}. Order ID: ${orderId}
+END:VEVENT
+END:VCALENDAR`;
+
+        const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${eventTitle.replace(/\s+/g, '_')}_Event.ics`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     return (
@@ -129,9 +153,33 @@ export default function QRPass({
                                 <div className="absolute inset-0 bg-blue-400/5 mix-blend-overlay pointer-events-none" />
                             </div>
 
-                            <div className="text-center mb-6 w-full">
-                                <div className="text-white/40 text-xs tracking-[0.2em] mb-1">Seats</div>
-                                <div className="text-xl font-bold font-mono tracking-widest">{seats.join(", ")}</div>
+                            <div className="mb-6 w-full flex flex-col gap-2 relative">
+                                {attendees.map((attendee) => (
+                                    <div key={attendee.seat} className="flex flex-col gap-2 bg-white/5 p-3 px-4 rounded-lg">
+                                        <div className="flex justify-between items-center w-full">
+                                            <div className="text-left">
+                                                <div className="text-white/40 text-[10px] tracking-widest uppercase mb-0.5">Attendee</div>
+                                                <div className="font-semibold text-sm truncate max-w-[150px]">{attendee.name}</div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-white/40 text-[10px] tracking-widest uppercase mb-0.5">Seat</div>
+                                                <div className="font-bold font-mono text-sm text-purple-300">{attendee.seat}</div>
+                                            </div>
+                                        </div>
+                                        {Object.entries(attendee).filter(([key]) => key !== 'seat' && key !== 'name' && key !== 'email').length > 0 && (
+                                            <div className="pt-2 mt-1 border-t border-white/10 grid grid-cols-2 gap-2">
+                                                {Object.entries(attendee)
+                                                    .filter(([key]) => key !== 'seat' && key !== 'name' && key !== 'email')
+                                                    .map(([key, value]) => (
+                                                        <div key={key} className="text-left">
+                                                            <div className="text-white/40 text-[10px] tracking-widest uppercase mb-0.5">{key}</div>
+                                                            <div className="font-medium text-xs truncate text-white/80">{value}</div>
+                                                        </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
 
                             {/* Event Details Grid */}

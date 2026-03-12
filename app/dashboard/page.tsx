@@ -184,7 +184,7 @@ export default function DashboardHub() {
                                         </div>
                                     </div>
 
-                                    <Link href={`/events/${event.id}`} className="mt-4 md:mt-0 px-4 py-2 bg-white/5 hover:bg-purple-500/20 border border-white/10 hover:border-purple-500/50 rounded-lg text-sm font-medium transition-all w-full md:w-auto text-center shrink-0">
+                                    <Link href={`/dashboard/events/${event.id}`} className="mt-4 md:mt-0 px-4 py-2 bg-white/5 hover:bg-purple-500/20 border border-white/10 hover:border-purple-500/50 rounded-lg text-sm font-medium transition-all w-full md:w-auto text-center shrink-0">
                                         Manage
                                     </Link>
                                 </GlassCard>

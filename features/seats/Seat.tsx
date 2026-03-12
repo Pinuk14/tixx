@@ -11,9 +11,10 @@ interface SeatProps {
     onClick?: (id: string) => void;
     className?: string;
     price?: number;
+    color?: string; // Optional tier color for matrix mode
 }
 
-export default function Seat({ id, number, status, onClick, className = "" }: SeatProps) {
+export default function Seat({ id, number, status, onClick, className = "", color }: SeatProps) {
     const isAvailable = status === "available";
     const isSelected = status === "selected";
     const isReserved = status === "reserved" || status === "unavailable";

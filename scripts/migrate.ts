@@ -57,6 +57,43 @@ async function migrate() {
         `);
         console.log("Added dynamic_pricing_strategy column to events table.");
 
+        // Add form_fields if it doesn't exist to track custom attendee info required
+        await client.query(`
+            ALTER TABLE events 
+            ADD COLUMN IF NOT EXISTS form_fields JSONB DEFAULT '["name", "email"]'::jsonb;
+        `);
+        console.log("Added form_fields column to events table.");
+
+        // --- Seating System Redesign Columns ---
+        await client.query(`
+            ALTER TABLE events 
+            ADD COLUMN IF NOT EXISTS seating_type VARCHAR(50) DEFAULT 'general';
+        `);
+        console.log("Added seating_type column to events table.");
+
+        await client.query(`
+            ALTER TABLE events 
+            ADD COLUMN IF NOT EXISTS ticket_tiers JSONB;
+        `);
+        console.log("Added ticket_tiers column to events table.");
+
+        await client.query(`
+            ALTER TABLE events 
+            ADD COLUMN IF NOT EXISTS seating_config JSONB;
+        `);
+        console.log("Added seating_config column to events table.");
+
+        // Table for Event Views
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS event_views (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                event_id UUID REFERENCES events(id) ON DELETE CASCADE,
+                viewer_id VARCHAR(255),
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        console.log("Event views table ensured.");
+
         // Table for Passes
         await client.query(`
             CREATE TABLE IF NOT EXISTS passes (

@@ -27,7 +27,11 @@ export async function POST(req: Request) {
             currency,
             image_url,
             is_dynamic_pricing,
-            dynamic_pricing_strategy
+            dynamic_pricing_strategy,
+            form_fields,
+            seating_type,
+            ticket_tiers,
+            seating_config
         } = body;
 
         const validationError = validateFields(body, ['title', 'location_name', 'upi_id', 'event_date']);
@@ -101,34 +105,31 @@ export async function POST(req: Request) {
             validLng = parsedLng;
         }
 
-        // 7. Check Active Event Limit (< 3)
-        const activeEventsResult = await query(
-            `SELECT COUNT(*) as active_count FROM events 
-       WHERE organizer_id = $1 AND is_active = true`,
-            [organizerId]
-        );
-
-        const activeCount = parseInt(activeEventsResult.rows[0].active_count, 10);
-        if (activeCount >= 3) {
-            return NextResponse.json(
-                { error: 'Limit exceeded. Organizers can have a maximum of 3 active events at a time.' },
-                { status: 403 } // Forbidden
-            );
+        // Calculate Seat Logic based on Seating Type
+        let processedTotalSeats = null;
+        if (seating_type === 'general' && Array.isArray(ticket_tiers)) {
+            processedTotalSeats = ticket_tiers.reduce((acc, tier) => acc + (tier.capacity || 0), 0);
+        } else if (seating_type === 'matrix' && seating_config?.rows && seating_config?.seatsPerRow) {
+            processedTotalSeats = seating_config.rows * seating_config.seatsPerRow;
+        } else if (total_seats && total_seats > 0) {
+            // Fallback for legacy creation endpoints if they still punch through
+            processedTotalSeats = total_seats;
         }
 
-        // 7. Calculate Seat Logic
-        // If total_seats provided => seats_available = total_seats
-        // If no seats provided / 0 => calculate as NULL internally for DB
-        const processedTotalSeats = (total_seats && total_seats > 0) ? total_seats : null;
         const processedAvailableSeats = processedTotalSeats; // Available starts identical to Total
+
+        // Calculate a reasonable legacy price_per_seat fallback based on tiers if needed
+        const fallbackPrice = (Array.isArray(ticket_tiers) && ticket_tiers.length > 0) 
+            ? ticket_tiers[0].price 
+            : (price_per_seat || 0);
 
         // 8. Insert New Event
         const insertResult = await query(
             `INSERT INTO events (
         organizer_id, title, description, location_name, latitude, longitude, 
-        total_seats, seats_available, upi_id, price_per_seat, event_date, end_date, category, currency, image_url, is_active, is_dynamic_pricing, dynamic_pricing_strategy
+        total_seats, seats_available, upi_id, price_per_seat, event_date, end_date, category, currency, image_url, is_active, is_dynamic_pricing, dynamic_pricing_strategy, form_fields, seating_type, ticket_tiers, seating_config
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true, $16, $17
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true, $16, $17, $18, $19, $20, $21
       ) RETURNING *`,
             [
                 organizerId,
@@ -140,14 +141,18 @@ export async function POST(req: Request) {
                 processedTotalSeats,
                 processedAvailableSeats,
                 upi_id,
-                price_per_seat || 0,
+                fallbackPrice,
                 parsedEventDate.toISOString(),
                 parsedEndDate ? parsedEndDate.toISOString() : null,
                 category || 'Conference',
                 currency || 'INR',
                 image_url || null,
                 is_dynamic_pricing || false,
-                dynamic_pricing_strategy || null
+                dynamic_pricing_strategy || null,
+                JSON.stringify(form_fields || ['name', 'email']),
+                seating_type || 'general',
+                ticket_tiers ? JSON.stringify(ticket_tiers) : null,
+                seating_config ? JSON.stringify(seating_config) : null
             ]
         );
 

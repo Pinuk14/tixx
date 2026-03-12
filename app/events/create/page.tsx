@@ -53,6 +53,91 @@ export default function CreateEventPage() {
     // Dynamic Pricing State
     const [isDynamicPricing, setIsDynamicPricing] = useState(false);
     const [dynamicStrategy, setDynamicStrategy] = useState("front_rows_extra");
+    
+    // Custom Form Fields State
+    const [formFields, setFormFields] = useState({
+        name: true,
+        email: true,
+        phone: false,
+        college: false,
+        age: false
+    });
+
+    // --- Seating Options State ---
+    const [seatingType, setSeatingType] = useState<"general" | "matrix">("general");
+    
+    // Tiers mapping for both modes
+    const [ticketTiers, setTicketTiers] = useState([
+        { id: "tier_1", name: "General Admission", price: 50, capacity: 100, color: "#a855f7" }
+    ]);
+    
+    // Matrix config (rows and tier mapping)
+    const [matrixRows, setMatrixRows] = useState(10);
+    const [matrixSeatsPerRow, setMatrixSeatsPerRow] = useState(10);
+    const [rowTiers, setRowTiers] = useState<Record<string, string>>({}); // e.g: { "A": "tier_1", "B": "tier_2" }
+
+    // Helper to generate typical A, B, C... AI, AJ row names
+    const getRowLabel = (index: number) => {
+        let label = "";
+        let num = index;
+        while (num >= 0) {
+            label = String.fromCharCode(65 + (num % 26)) + label;
+            num = Math.floor(num / 26) - 1;
+        }
+        return label;
+    };
+
+    // Initialize row tiers when matrix sizes change
+    useState(() => {
+        if (seatingType === "matrix") {
+            const initialRowMap: Record<string, string> = {};
+            for(let i=0; i<matrixRows; i++) {
+                initialRowMap[getRowLabel(i)] = ticketTiers[0].id;
+            }
+            setRowTiers(initialRowMap);
+        }
+    });
+
+    const addTier = () => {
+        const newId = `tier_${Math.random().toString(36).substr(2, 9)}`;
+        const colors = ["#ec4899", "#3b82f6", "#22c55e", "#eab308", "#ef4444", "#8b5cf6"];
+        setTicketTiers([
+            ...ticketTiers, 
+            { 
+                id: newId, 
+                name: `Tier ${ticketTiers.length + 1}`, 
+                price: 0, 
+                capacity: 50, 
+                color: colors[ticketTiers.length % colors.length] 
+            }
+        ]);
+    };
+
+    const removeTier = (id: string) => {
+        if (ticketTiers.length <= 1) return;
+        setTicketTiers(ticketTiers.filter(t => t.id !== id));
+        // Clean up any row tiers pointing to removed tier
+        const updatedRowTiers = { ...rowTiers };
+        let changed = false;
+        Object.keys(updatedRowTiers).forEach(rowLabel => {
+            if (updatedRowTiers[rowLabel] === id) {
+                updatedRowTiers[rowLabel] = ticketTiers[0].id;
+                changed = true;
+            }
+        });
+        if (changed) setRowTiers(updatedRowTiers);
+    };
+
+    const updateTier = (id: string, field: string, value: string | number) => {
+        setTicketTiers(ticketTiers.map(t => 
+            t.id === id ? { ...t, [field]: value } : t
+        ));
+    };
+
+    const handleRowTierChange = (rowLabel: string, tierId: string) => {
+        setRowTiers(prev => ({ ...prev, [rowLabel]: tierId }));
+    };
+
 
     const combineDateAndTime = (date: Date | null, timeString: string) => {
         if (!date) return null;
@@ -126,15 +211,20 @@ export default function CreateEventPage() {
                     location_name: formData.location_name,
                     latitude: locationConfig.lat,
                     longitude: locationConfig.lng,
-                    total_seats: formData.total_seats ? parseInt(formData.total_seats) : undefined,
                     upi_id: formData.upi_id,
-                    price_per_seat: formData.price_per_seat ? parseFloat(formData.price_per_seat) : undefined,
                     currency: formData.currency,
                     event_date: combineDateAndTime(formData.event_date, startTime)?.toISOString(),
                     end_date: formData.end_date ? combineDateAndTime(formData.end_date, endTime)?.toISOString() : undefined,
                     image_url: uploadedImageUrl,
-                    is_dynamic_pricing: isDynamicPricing,
-                    dynamic_pricing_strategy: isDynamicPricing ? dynamicStrategy : null
+                    form_fields: Object.keys(formFields).filter(k => formFields[k as keyof typeof formFields]),
+                    // Seating Mode Configs
+                    seating_type: seatingType,
+                    ticket_tiers: ticketTiers,
+                    seating_config: seatingType === "matrix" ? {
+                        rows: matrixRows,
+                        seatsPerRow: matrixSeatsPerRow,
+                        rowTiers: rowTiers
+                    } : null
                 })
             });
 
@@ -367,46 +457,25 @@ export default function CreateEventPage() {
                                     )}
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <GlassInput
-                                        id="total_seats"
-                                        type="number"
-                                        label="Total Seats (Optional)"
-                                        placeholder="100"
-                                        value={formData.total_seats}
-                                        onChange={handleChange}
-                                        min="1"
-                                    />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <label className="block text-sm font-medium text-white/80 ml-1">Entry Fee</label>
-                                        <div className="flex gap-2">
-                                            <select
-                                                id="currency"
-                                                value={formData.currency}
-                                                // @ts-ignore
-                                                onChange={handleChange}
-                                                className="bg-white/5 border border-white/10 text-white px-3 py-[14px] rounded-2xl outline-none backdrop-blur-md focus:bg-white/10 focus:border-purple-500/50 transition-all cursor-pointer appearance-none w-24 text-center"
-                                            >
-                                                <option value="INR" className="bg-slate-900">INR (₹)</option>
-                                                <option value="USD" className="bg-slate-900">USD ($)</option>
-                                                <option value="EUR" className="bg-slate-900">EUR (€)</option>
-                                            </select>
-                                            <input
-                                                id="price_per_seat"
-                                                type="number"
-                                                placeholder="0.00 (Free)"
-                                                value={formData.price_per_seat}
-                                                onChange={handleChange}
-                                                min="0"
-                                                step="0.01"
-                                                className="flex-1 w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-[14px] text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all"
-                                            />
-                                        </div>
+                                        <label className="block text-sm font-medium text-white/80 ml-1">Currency</label>
+                                        <select
+                                            id="currency"
+                                            value={formData.currency}
+                                            // @ts-ignore
+                                            onChange={handleChange}
+                                            className="w-full bg-white/5 border border-white/10 text-white px-4 py-[14px] rounded-2xl outline-none backdrop-blur-md focus:bg-white/10 focus:border-purple-500/50 hover:bg-white/10 transition-all cursor-pointer appearance-none"
+                                        >
+                                            <option value="INR" className="bg-slate-900">INR (₹)</option>
+                                            <option value="USD" className="bg-slate-900">USD ($)</option>
+                                            <option value="EUR" className="bg-slate-900">EUR (€)</option>
+                                        </select>
                                     </div>
                                     <GlassInput
                                         id="upi_id"
                                         type="text"
-                                        label="Organizer UPI ID"
+                                        label="Organizer UPI ID (For Payments)"
                                         placeholder="organizer@bank"
                                         value={formData.upi_id}
                                         onChange={handleChange}
@@ -414,49 +483,247 @@ export default function CreateEventPage() {
                                     />
                                 </div>
 
-                                {/* Dynamic Pricing Sector */}
-                                <div className="p-5 border border-purple-500/30 bg-purple-500/10 rounded-2xl space-y-4">
-                                    <div className="flex items-center justify-between">
+                                {/* --- Seating System Configuration --- */}
+                                <div className="p-6 border border-white/10 bg-black/20 rounded-3xl space-y-6">
+                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6">
                                         <div>
-                                            <h3 className="font-bold text-white mb-1">Enable Dynamic Seat Pricing</h3>
-                                            <p className="text-sm text-white/60">Allow the system to automatically adjust individual seat prices based on their position.</p>
+                                            <h3 className="text-xl font-bold text-white mb-1">Seating Configuration</h3>
+                                            <p className="text-sm text-white/50">Choose how tickets and sections are mapped out for your attendees.</p>
                                         </div>
-                                        <label className="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" className="sr-only peer" checked={isDynamicPricing} onChange={() => setIsDynamicPricing(!isDynamicPricing)} />
-                                            <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)]"></div>
-                                        </label>
+                                        <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 w-fit">
+                                            <button
+                                                type="button"
+                                                onClick={() => setSeatingType("general")}
+                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${seatingType === "general" ? "bg-purple-500 text-white shadow-lg" : "text-white/50 hover:text-white"}`}
+                                            >
+                                                Abstract Sections
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setSeatingType("matrix");
+                                                    // Sync matrix rows if turning on
+                                                    const initialRowMap: Record<string, string> = {};
+                                                    for(let i=0; i<matrixRows; i++) {
+                                                        initialRowMap[getRowLabel(i)] = rowTiers[getRowLabel(i)] || ticketTiers[0].id;
+                                                    }
+                                                    setRowTiers(initialRowMap);
+                                                }}
+                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${seatingType === "matrix" ? "bg-blue-500 text-white shadow-lg" : "text-white/50 hover:text-white"}`}
+                                            >
+                                                2D Matrix Grid
+                                            </button>
+                                        </div>
                                     </div>
 
-                                    <AnimatePresence>
-                                        {isDynamicPricing && (
-                                            <motion.div
-                                                initial={{ height: 0, opacity: 0 }}
-                                                animate={{ height: "auto", opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }}
-                                                className="overflow-hidden"
-                                            >
-                                                <div className="pt-4 border-t border-purple-500/20">
-                                                    <label className="block text-sm font-medium text-white/80 ml-1 mb-2">Pricing Strategy Focus</label>
-                                                    <div className="relative">
-                                                        <select
-                                                            value={dynamicStrategy}
-                                                            onChange={(e) => setDynamicStrategy(e.target.value)}
-                                                            className="w-full bg-black/40 border border-purple-500/30 text-white px-4 py-[14px] rounded-2xl outline-none backdrop-blur-md focus:bg-white/10 focus:border-purple-500 transition-all cursor-pointer appearance-none"
-                                                        >
-                                                            <option value="front_rows_extra" className="bg-slate-900">Front Rows Cost Extra (VIP Experience)</option>
-                                                            <option value="center_rows_extra" className="bg-slate-900">Center Rows Cost Extra (Best Acoustics/View)</option>
-                                                            <option value="back_rows_extra" className="bg-slate-900">Back Rows Cost Extra (Private/Balcony)</option>
-                                                        </select>
-                                                        <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-white/50">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                                                            </svg>
+                                    {/* Abstract / General Admission Mode */}
+                                    {seatingType === "general" && (
+                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <h4 className="text-white/80 font-medium text-sm ml-1">Ticket Sections / Tiers</h4>
+                                                <button type="button" onClick={addTier} className="text-xs text-purple-400 hover:text-purple-300 font-medium">
+                                                    + Add Section
+                                                </button>
+                                            </div>
+                                            
+                                            <div className="space-y-3">
+                                                {ticketTiers.map((tier, idx) => (
+                                                    <div key={tier.id} className="flex flex-col sm:flex-row gap-3 p-3 bg-white/5 border border-white/10 rounded-2xl items-center relative group">
+                                                        <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: tier.color }} />
+                                                        <input 
+                                                            type="text" 
+                                                            value={tier.name}
+                                                            onChange={(e) => updateTier(tier.id, "name", e.target.value)}
+                                                            placeholder="Section Name (e.g., VIP, General)" 
+                                                            className="flex-1 bg-transparent border-none text-white focus:ring-0 text-sm outline-none px-2"
+                                                        />
+                                                        <div className="hidden sm:block w-[1px] h-6 bg-white/10" />
+                                                        <div className="flex gap-2 w-full sm:w-auto">
+                                                            <div className="relative">
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50 text-xs">Capacity</span>
+                                                                <input 
+                                                                    type="number" 
+                                                                    min="1"
+                                                                    value={tier.capacity}
+                                                                    onChange={(e) => updateTier(tier.id, "capacity", parseInt(e.target.value) || 0)}
+                                                                    className="w-full sm:w-28 bg-white/5 border border-white/10 rounded-xl py-2 pl-16 pr-3 text-white text-sm outline-none focus:border-purple-500"
+                                                                />
+                                                            </div>
+                                                            <div className="relative">
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50 text-xs font-mono">{formData.currency}</span>
+                                                                <input 
+                                                                    type="number" 
+                                                                    min="0"
+                                                                    step="0.01"
+                                                                    value={tier.price}
+                                                                    onChange={(e) => updateTier(tier.id, "price", parseFloat(e.target.value) || 0)}
+                                                                    className="w-full sm:w-28 bg-white/5 border border-white/10 rounded-xl py-2 pl-12 pr-3 text-white text-sm outline-none focus:border-purple-500"
+                                                                />
+                                                            </div>
                                                         </div>
+                                                        {ticketTiers.length > 1 && (
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={() => removeTier(tier.id)}
+                                                                className="text-red-400/50 hover:text-red-400 transition-colors absolute sm:static -top-2 -right-2 sm:translate-none p-1 bg-black/50 sm:bg-transparent rounded-full"
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
+                                                            </button>
+                                                        )}
                                                     </div>
+                                                ))}
+                                            </div>
+                                            <p className="text-xs text-white/40 italic ml-1 mt-2">
+                                                Total abstract capacity: {ticketTiers.reduce((acc, curr) => acc + (curr.capacity || 0), 0)}
+                                            </p>
+                                        </motion.div>
+                                    )}
+
+                                    {/* Assigned Seating Matrix Mode */}
+                                    {seatingType === "matrix" && (
+                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                                            <div className="grid grid-cols-2 gap-4 bg-blue-500/5 p-4 rounded-2xl border border-blue-500/20">
+                                                <div>
+                                                    <label className="block text-xs text-blue-300/80 mb-1 ml-1">Grid Rows</label>
+                                                    <input 
+                                                        type="number" 
+                                                        min="1" max="100"
+                                                        value={matrixRows}
+                                                        onChange={(e) => {
+                                                            const val = parseInt(e.target.value) || 1;
+                                                            setMatrixRows(val);
+                                                            // Sync row map
+                                                            const newMap = { ...rowTiers };
+                                                            for(let i=0; i<val; i++) {
+                                                                const label = getRowLabel(i);
+                                                                if (!newMap[label]) newMap[label] = ticketTiers[0].id;
+                                                            }
+                                                            setRowTiers(newMap);
+                                                        }}
+                                                        className="w-full bg-black/40 border border-blue-500/30 rounded-xl py-2 px-3 text-white text-sm outline-none focus:border-blue-400"
+                                                    />
                                                 </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
+                                                <div>
+                                                    <label className="block text-xs text-blue-300/80 mb-1 ml-1">Seats Per Row</label>
+                                                    <input 
+                                                        type="number" 
+                                                        min="1" max="100"
+                                                        value={matrixSeatsPerRow}
+                                                        onChange={(e) => setMatrixSeatsPerRow(parseInt(e.target.value) || 1)}
+                                                        className="w-full bg-black/40 border border-blue-500/30 rounded-xl py-2 px-3 text-white text-sm outline-none focus:border-blue-400"
+                                                    />
+                                                </div>
+                                                <p className="text-xs text-blue-200/50 col-span-2 italic">
+                                                    Matrix generates {matrixRows * matrixSeatsPerRow} total precise seats.
+                                                </p>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div>
+                                                        <h4 className="text-white/80 font-medium text-sm ml-1">Pricing Tiers</h4>
+                                                        <p className="text-xs text-white/40 ml-1">Create tiers to map to specific rows.</p>
+                                                    </div>
+                                                    <button type="button" onClick={addTier} className="text-xs text-blue-400 hover:text-blue-300 font-medium">
+                                                        + Add Tier
+                                                    </button>
+                                                </div>
+                                                
+                                                <div className="space-y-2">
+                                                    {ticketTiers.map((tier) => (
+                                                        <div key={tier.id} className="flex items-center gap-3 p-2 bg-white/5 border border-white/10 rounded-xl">
+                                                            <div className="w-3 h-3 rounded-full ml-2 flex-shrink-0" style={{ backgroundColor: tier.color }} />
+                                                            <input 
+                                                                type="text" 
+                                                                value={tier.name}
+                                                                onChange={(e) => updateTier(tier.id, "name", e.target.value)}
+                                                                placeholder="Tier Name" 
+                                                                className="flex-1 min-w-[100px] bg-transparent border-none text-white focus:ring-0 text-sm outline-none font-medium"
+                                                            />
+                                                            <div className="flex bg-black/40 border border-white/10 rounded-lg overflow-hidden shrink-0">
+                                                                <span className="px-2 py-1.5 text-white/40 text-xs border-r border-white/10 bg-white/5">{formData.currency}</span>
+                                                                <input 
+                                                                    type="number" 
+                                                                    min="0" step="0.01"
+                                                                    value={tier.price}
+                                                                    onChange={(e) => updateTier(tier.id, "price", parseFloat(e.target.value) || 0)}
+                                                                    className="w-20 px-2 py-1 bg-transparent border-none text-white focus:ring-0 text-sm outline-none"
+                                                                />
+                                                            </div>
+                                                            {ticketTiers.length > 1 && (
+                                                                <button type="button" onClick={() => removeTier(tier.id)} className="pr-2 text-white/20 hover:text-red-400">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="pt-4 border-t border-white/10">
+                                                <h4 className="text-white/80 font-medium text-sm ml-1 mb-3">Map Rows to Tiers</h4>
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                                                    {Array.from({ length: matrixRows }).map((_, i) => {
+                                                        const rowLabel = getRowLabel(i);
+                                                        const currentTierId = rowTiers[rowLabel] || ticketTiers[0].id;
+                                                        const activeTier = ticketTiers.find(t => t.id === currentTierId);
+                                                        
+                                                        return (
+                                                            <div key={rowLabel} className="bg-white/5 border border-white/10 rounded-lg flex items-stretch overflow-hidden group">
+                                                                <div 
+                                                                    className="w-1.5 shrink-0" 
+                                                                    style={{ backgroundColor: activeTier?.color || '#fff' }} 
+                                                                />
+                                                                <div className="flex-1 flex items-center justify-between px-2 py-1.5">
+                                                                    <span className="text-xs font-bold text-white/80 w-6">Row {rowLabel}</span>
+                                                                    <select 
+                                                                        value={currentTierId}
+                                                                        onChange={(e) => handleRowTierChange(rowLabel, e.target.value)}
+                                                                        className="w-full bg-transparent text-xs text-white/60 focus:text-white outline-none appearance-none cursor-pointer pl-2"
+                                                                        style={{ direction: 'rtl' }}
+                                                                    >
+                                                                        {ticketTiers.map(t => (
+                                                                            <option key={t.id} value={t.id} className="bg-slate-900 text-left">{t.name}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </div>
+
+                                {/* Custom Form Fields Sector */}
+                                <div className="p-5 border border-blue-500/30 bg-blue-500/10 rounded-2xl space-y-4">
+                                    <div>
+                                        <h3 className="font-bold text-white mb-1">Required Attendee Info</h3>
+                                        <p className="text-sm text-white/60">Select what details attendees must provide when booking seats.</p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-4 mt-2">
+                                        <label className="flex items-center gap-2 cursor-not-allowed opacity-70">
+                                            <input type="checkbox" checked={true} disabled className="rounded bg-black/40 border-white/20 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900" />
+                                            <span className="text-sm text-white">Name</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-not-allowed opacity-70">
+                                            <input type="checkbox" checked={true} disabled className="rounded bg-black/40 border-white/20 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900" />
+                                            <span className="text-sm text-white">Email</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-pointer group">
+                                            <input type="checkbox" checked={formFields.phone} onChange={(e) => setFormFields(f => ({ ...f, phone: e.target.checked }))} className="rounded bg-black/40 border-white/20 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900" />
+                                            <span className="text-sm text-white/80 group-hover:text-white transition-colors">Phone Number</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-pointer group">
+                                            <input type="checkbox" checked={formFields.college} onChange={(e) => setFormFields(f => ({ ...f, college: e.target.checked }))} className="rounded bg-black/40 border-white/20 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900" />
+                                            <span className="text-sm text-white/80 group-hover:text-white transition-colors">College / Company</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-pointer group">
+                                            <input type="checkbox" checked={formFields.age} onChange={(e) => setFormFields(f => ({ ...f, age: e.target.checked }))} className="rounded bg-black/40 border-white/20 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900" />
+                                            <span className="text-sm text-white/80 group-hover:text-white transition-colors">Age</span>
+                                        </label>
+                                    </div>
                                 </div>
 
                                 {/* Animated Error Banner */}

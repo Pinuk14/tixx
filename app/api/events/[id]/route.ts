@@ -30,7 +30,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
                 image_url,
                 is_dynamic_pricing,
                 dynamic_pricing_strategy,
-                organizer_id
+                organizer_id,
+                form_fields,
+                seating_type,
+                ticket_tiers,
+                seating_config
             FROM events
             WHERE id = $1
             LIMIT 1;
@@ -42,7 +46,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
             return NextResponse.json({ error: "Event not found." }, { status: 404 });
         }
 
-        return NextResponse.json({ event: result.rows[0] }, { status: 200 });
+        const event = result.rows[0];
+        if (event.price_per_seat) {
+            event.price_per_seat = parseFloat(event.price_per_seat);
+        }
+
+        return NextResponse.json({ event }, { status: 200 });
     } catch (error: any) {
         console.error("Fetch Event details error:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
