@@ -15,7 +15,10 @@ export const pool =
         // Optimal default connection pool sizing for serverless/app router 
         max: process.env.DB_POOL_MAX ? parseInt(process.env.DB_POOL_MAX) : 10,
         idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 3000,
+        connectionTimeoutMillis: 10000, // Increased timeout to 10 seconds for cloud connections
+        ssl: process.env.DATABASE_URL?.includes('neon.tech') || process.env.DATABASE_URL?.includes('supabase') 
+            ? { rejectUnauthorized: false } 
+            : undefined,
     });
 
 // Save to global context only when not in production to prevent memory leaks edge-cases
