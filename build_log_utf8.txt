@@ -1,0 +1,331 @@
+﻿
+> tixx@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.6 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+node.exe : 
+At line:1 char:1
++ & "B:\Apps For 
+Me\Node.js/node.exe" 
+"B:\Apps For 
+Me\Node.js/node_modu ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (:String  
+  ) [], RemoteException
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+> Build error occurred
+Error: Turbopack build 
+failed with 3 errors:
+./components/ui/CrowdScene.ts
+x:5:1
+Module not found: Can't 
+resolve '@react-three/drei'
+[0m [90m 3 |[39m 
+[36mimport[39m { 
+useRef[33m,[39m useMemo } 
+[36mfrom[39m 
+[32m"react"[39m[33m;[39m
+ [90m 4 |[39m 
+[36mimport[39m { 
+[33mCanvas[39m[33m,[39m 
+useFrame[33m,[39m useThree 
+} [36mfrom[39m [32m"@react
+-three/fiber"[39m[33m;[39m
+[31m[1m>[22m[39m[90m 5 
+|[39m [36mimport[39m { 
+[33mPreload[39m } 
+[36mfrom[39m [32m"@react-t
+hree/drei"[39m[33m;[39m
+ [90m   |[39m [31m[1m^[2
+2m[39m[31m[1m^[22m[39m[
+31m[1m^[22m[39m[31m[1m^
+[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m
+^[22m[39m[31m[1m^[22m[3
+9m[31m[1m^[22m[39m[31m[
+1m^[22m[39m[31m[1m^[22m
+[39m[31m[1m^[22m[39m[31m
+[1m^[22m[39m[31m[1m^[22
+m[39m[31m[1m^[22m[39m[3
+1m[1m^[22m[39m[31m[1m^[
+22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m^
+[22m[39m[31m[1m^[22m[39
+m[31m[1m^[22m[39m[31m[1
+m^[22m[39m[31m[1m^[22m[
+39m[31m[1m^[22m[39m[31m
+[1m^[22m[39m[31m[1m^[22m
+[39m[31m[1m^[22m[39m[31
+m[1m^[22m[39m[31m[1m^[2
+2m[39m[31m[1m^[22m[39m[
+31m[1m^[22m[39m[31m[1m^
+[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m
+^[22m[39m[31m[1m^[22m[3
+9m[31m[1m^[22m[39m[31m[
+1m^[22m[39m[31m[1m^[22m
+[39m[31m[1m^[22m[39m[31m
+[1m^[22m[39m[31m[1m^[22
+m[39m[31m[1m^[22m[39m
+ [90m 6 |[39m 
+[36mimport[39m [33m*[39m 
+[36mas[39m [33mTHREE[39m 
+[36mfrom[39m 
+[32m"three"[39m[33m;[39m
+ [90m 7 |[39m 
+[36mimport[39m gsap 
+[36mfrom[39m 
+[32m"gsap"[39m[33m;[39m
+ [90m 8 |[39m 
+[36mimport[39m 
+[33mScrollTrigger[39m 
+[36mfrom[39m [32m"gsap/Scr
+ollTrigger"[39m[33m;[39m[
+0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./components/ui/CrowdScen
+e.tsx [Client Component 
+Browser]
+    ./components/ui/HeroScrol
+lScene.tsx [Client Component 
+Browser]
+    ./app/page.tsx [Client 
+Component Browser]
+    ./app/page.tsx [Server 
+Component]
+
+  Client Component SSR:
+    ./components/ui/CrowdScen
+e.tsx [Client Component SSR]
+    ./components/ui/HeroScrol
+lScene.tsx [Client Component 
+SSR]
+    ./app/page.tsx [Client 
+Component SSR]
+    ./app/page.tsx [Server 
+Component]
+
+https://nextjs.org/docs/messa
+ges/module-not-found
+
+
+./components/ui/CrowdScene.ts
+x:4:1
+Module not found: Can't 
+resolve '@react-three/fiber'
+[0m [90m 2 |[39m
+ [90m 3 |[39m 
+[36mimport[39m { 
+useRef[33m,[39m useMemo } 
+[36mfrom[39m 
+[32m"react"[39m[33m;[39m
+[31m[1m>[22m[39m[90m 4 
+|[39m [36mimport[39m { 
+[33mCanvas[39m[33m,[39m 
+useFrame[33m,[39m useThree 
+} [36mfrom[39m [32m"@react
+-three/fiber"[39m[33m;[39m
+ [90m   |[39m [31m[1m^[2
+2m[39m[31m[1m^[22m[39m[
+31m[1m^[22m[39m[31m[1m^
+[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m
+^[22m[39m[31m[1m^[22m[3
+9m[31m[1m^[22m[39m[31m[
+1m^[22m[39m[31m[1m^[22m
+[39m[31m[1m^[22m[39m[31m
+[1m^[22m[39m[31m[1m^[22
+m[39m[31m[1m^[22m[39m[3
+1m[1m^[22m[39m[31m[1m^[
+22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m^
+[22m[39m[31m[1m^[22m[39
+m[31m[1m^[22m[39m[31m[1
+m^[22m[39m[31m[1m^[22m[
+39m[31m[1m^[22m[39m[31m
+[1m^[22m[39m[31m[1m^[22m
+[39m[31m[1m^[22m[39m[31
+m[1m^[22m[39m[31m[1m^[2
+2m[39m[31m[1m^[22m[39m[
+31m[1m^[22m[39m[31m[1m^
+[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m
+^[22m[39m[31m[1m^[22m[3
+9m[31m[1m^[22m[39m[31m[
+1m^[22m[39m[31m[1m^[22m
+[39m[31m[1m^[22m[39m[31m
+[1m^[22m[39m[31m[1m^[22
+m[39m[31m[1m^[22m[39m[3
+1m[1m^[22m[39m[31m[1m^[
+22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m^
+[22m[39m[31m[1m^[22m[39
+m[31m[1m^[22m[39m[31m[1
+m^[22m[39m[31m[1m^[22m[
+39m[31m[1m^[22m[39m[31m
+[1m^[22m[39m[31m[1m^[22m
+[39m[31m[1m^[22m[39m[31
+m[1m^[22m[39m[31m[1m^[2
+2m[39m[31m[1m^[22m[39m[
+31m[1m^[22m[39m[31m[1m^
+[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m
+ [90m 5 |[39m 
+[36mimport[39m { 
+[33mPreload[39m } 
+[36mfrom[39m [32m"@react-t
+hree/drei"[39m[33m;[39m
+ [90m 6 |[39m 
+[36mimport[39m [33m*[39m 
+[36mas[39m [33mTHREE[39m 
+[36mfrom[39m 
+[32m"three"[39m[33m;[39m
+ [90m 7 |[39m 
+[36mimport[39m gsap 
+[36mfrom[39m [32m"gsap"[3
+9m[33m;[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./components/ui/CrowdScen
+e.tsx [Client Component 
+Browser]
+    ./components/ui/HeroScrol
+lScene.tsx [Client Component 
+Browser]
+    ./app/page.tsx [Client 
+Component Browser]
+    ./app/page.tsx [Server 
+Component]
+
+  Client Component SSR:
+    ./components/ui/CrowdScen
+e.tsx [Client Component SSR]
+    ./components/ui/HeroScrol
+lScene.tsx [Client Component 
+SSR]
+    ./app/page.tsx [Client 
+Component SSR]
+    ./app/page.tsx [Server 
+Component]
+
+https://nextjs.org/docs/messa
+ges/module-not-found
+
+
+./components/ui/CrowdScene.ts
+x:6:1
+Module not found: Can't 
+resolve 'three'
+[0m [90m 4 |[39m 
+[36mimport[39m { 
+[33mCanvas[39m[33m,[39m 
+useFrame[33m,[39m useThree 
+} [36mfrom[39m [32m"@react
+-three/fiber"[39m[33m;[39m
+ [90m 5 |[39m 
+[36mimport[39m { 
+[33mPreload[39m } 
+[36mfrom[39m [32m"@react-t
+hree/drei"[39m[33m;[39m
+[31m[1m>[22m[39m[90m 6 
+|[39m [36mimport[39m 
+[33m*[39m [36mas[39m 
+[33mTHREE[39m 
+[36mfrom[39m 
+[32m"three"[39m[33m;[39m
+ [90m   |[39m [31m[1m^[2
+2m[39m[31m[1m^[22m[39m[
+31m[1m^[22m[39m[31m[1m^
+[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m
+^[22m[39m[31m[1m^[22m[3
+9m[31m[1m^[22m[39m[31m[
+1m^[22m[39m[31m[1m^[22m
+[39m[31m[1m^[22m[39m[31m
+[1m^[22m[39m[31m[1m^[22
+m[39m[31m[1m^[22m[39m[3
+1m[1m^[22m[39m[31m[1m^[
+22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m^
+[22m[39m[31m[1m^[22m[39
+m[31m[1m^[22m[39m[31m[1
+m^[22m[39m[31m[1m^[22m[
+39m[31m[1m^[22m[39m[31m
+[1m^[22m[39m[31m[1m^[22m
+[39m[31m[1m^[22m[39m[31
+m[1m^[22m[39m[31m[1m^[2
+2m[39m[31m[1m^[22m[39m
+ [90m 7 |[39m 
+[36mimport[39m gsap 
+[36mfrom[39m 
+[32m"gsap"[39m[33m;[39m
+ [90m 8 |[39m 
+[36mimport[39m 
+[33mScrollTrigger[39m 
+[36mfrom[39m [32m"gsap/Scr
+ollTrigger"[39m[33m;[39m
+ [90m 9 |[39m 
+[36mimport[39m { useEffect 
+} [36mfrom[39m [32m"react"
+[39m[33m;[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./components/ui/CrowdScen
+e.tsx [Client Component 
+Browser]
+    ./components/ui/HeroScrol
+lScene.tsx [Client Component 
+Browser]
+    ./app/page.tsx [Client 
+Component Browser]
+    ./app/page.tsx [Server 
+Component]
+
+  Client Component SSR:
+    ./components/ui/CrowdScen
+e.tsx [Client Component SSR]
+    ./components/ui/HeroScrol
+lScene.tsx [Client Component 
+SSR]
+    ./app/page.tsx [Client 
+Component SSR]
+    ./app/page.tsx [Server 
+Component]
+
+https://nextjs.org/docs/messa
+ges/module-not-found
+
+
+    at <unknown> (./component
+s/ui/CrowdScene.tsx:5:1)
+    at <unknown> (https://nex
+tjs.org/docs/messages/module-
+not-found)
+    at <unknown> (./component
+s/ui/CrowdScene.tsx:4:1)
+    at <unknown> (https://nex
+tjs.org/docs/messages/module-
+not-found)
+    at <unknown> (./component
+s/ui/CrowdScene.tsx:6:1)
+    at <unknown> (https://nex
+tjs.org/docs/messages/module-
+not-found)
