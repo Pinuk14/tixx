@@ -17,7 +17,15 @@ export default function OrderSummary({ onProceedToPayment, className = "", curre
     const { seats, selectedSeats } = useSeatStore();
 
     const selectedSeatDetails = useMemo(() => {
-        return seats.filter(s => selectedSeats.includes(s.id));
+        return selectedSeats.map(seatId => {
+            const baseSeatId = seatId.split('__')[0];
+            const seat = seats.find(s => s.id === baseSeatId || s.id === seatId);
+            if (!seat) return null;
+            return {
+                ...seat,
+                displayId: seatId
+            };
+        }).filter(Boolean) as (typeof seats[0] & { displayId: string })[];
     }, [seats, selectedSeats]);
 
     const totalPrice = useMemo(() => {
@@ -54,7 +62,7 @@ export default function OrderSummary({ onProceedToPayment, className = "", curre
                     <AnimatePresence mode="popLayout">
                         {selectedSeatDetails.map((seat) => (
                             <motion.li
-                                key={seat.id}
+                                key={seat.displayId}
                                 initial={{ opacity: 0, x: -20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: 20, transition: { duration: 0.2 } }}
@@ -63,11 +71,11 @@ export default function OrderSummary({ onProceedToPayment, className = "", curre
                             >
                                 <div className="flex items-center gap-3">
                                     <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-green-500/20 text-green-400 font-bold border border-green-500/30">
-                                        {seat.id}
+                                        {seat.displayId.includes('__') ? (seat.name?.charAt(0) || 'T') : seat.id}
                                     </div>
                                     <div>
-                                        <p className="text-sm font-medium text-white/90">Row {seat.row}</p>
-                                        <p className="text-xs text-white/50">Seat {seat.number}</p>
+                                        <p className="text-sm font-medium text-white/90">{seat.name || `Row ${seat.row}`}</p>
+                                        <p className="text-xs text-white/50">{seat.displayId.includes('__') ? 'General Ticket' : `Seat ${seat.number}`}</p>
                                     </div>
                                 </div>
                                 <div className="font-semibold">{symbol}{seat.price}</div>

@@ -157,7 +157,9 @@ export const useSeatStore = create<SeatStore>((set, get) => ({
         // Validate if seat exists and isn't reserved
         if (reservedSeats.includes(seatId) || selectedSeats.includes(seatId)) return;
 
-        const seatExists = seats.some((s) => s.id === seatId);
+        // For general admission, seatId might be "tierId__qty", but the actual seat id in store is "tierId"
+        const baseSeatId = seatId.split('__')[0];
+        const seatExists = seats.some((s) => s.id === baseSeatId || s.id === seatId);
         if (!seatExists) return;
 
         set((state) => ({

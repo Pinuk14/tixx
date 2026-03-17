@@ -113,7 +113,10 @@ export default function EventCheckoutPage() {
 
     // Derived states
     const selectedSeatDetails = useMemo(() => {
-        return seats.filter((s) => selectedSeats.includes(s.id));
+        return selectedSeats.map(seatId => {
+            const baseSeatId = seatId.split('__')[0];
+            return seats.find(s => s.id === baseSeatId || s.id === seatId);
+        }).filter(Boolean) as any[];
     }, [seats, selectedSeats]);
 
     const subtotalPrice = useMemo(() => {
@@ -368,8 +371,8 @@ export default function EventCheckoutPage() {
                                 
                                 <form onSubmit={handleProceedFromAttendees} className="space-y-6">
                                     {attendees.map((attendee, idx) => (
-                                        <div key={attendee.seat} className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-4">
-                                            <h4 className="font-semibold text-purple-300">Seat: {attendee.seat}</h4>
+                                        <div key={`${attendee.seat}-${idx}`} className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-4">
+                                            <h4 className="font-semibold text-purple-300">Seat: {attendee.seat} {idx > 0 && `(#${idx + 1})`}</h4>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 {event.formFields.map((field: string) => (
                                                     <div key={field} className="space-y-1">
